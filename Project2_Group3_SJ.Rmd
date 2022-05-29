@@ -1,0 +1,110 @@
+---
+title: "Project2_Group3"
+author: "Simran Jayasinghe"
+date: "5/27/2022"
+output: html_document
+---
+##Objective 3
+```{r}
+recoveredglobaldata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+confirmedglobaldata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+
+deathsglobaldata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+
+recovered_global_data <- read.csv(url(recoveredglobaldata))
+
+confirmed_global_data <- read.csv(url(confirmedglobaldata))
+
+deaths_global_data <- read.csv(url(deathsglobaldata))
+
+
+confirmedusdata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+
+deathsusdata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"
+
+confirmed_us_data <- read.csv(url(confirmedusdata))
+
+deaths_us_data <- read.csv(url(deathsusdata))
+
+install.packages("cowplot", repos = "http://cran.us.r-project.org")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+library(cowplot)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+##Objective 4
+```{r}
+
+confirmed_california <- subset(confirmed_us_data, confirmed_us_data$Province_State =="California")
+##print(confirmed_california)
+
+confirmed_state <- aggregate(confirmed_california[,12:ncol(confirmed_california)],by = list(confirmed_california$Province_State),FUN = sum, na.rm = TRUE)
+
+confirmed_state_pivoted<-pivot_longer(confirmed_state,cols=2:ncol(confirmed_state),names_to="Date",values_to="Cases")
+confirmed_state_pivoted$Date=seq(as.Date("2020-01-22"),by="day",length.out=nrow(confirmed_state_pivoted))
+
+cali_plot <- ggplot(data = confirmed_state_pivoted, mapping = aes(x=Date, y=Cases))+geom_point()+labs(title="COVID-19 confirmations in California", x="Date", y="Confirmed Cases")+geom_vline(xintercept = as.numeric(as.Date("2021-01-29")), linetype="dashed", color="red", size=1.5)+geom_text(aes(x=as.Date("2021-01-10"),label="EUA first dose",y=max(Cases)/2),color="red",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-05-11")), linetype="dashed", color="blue", size=1.5)+geom_text(aes(x=as.Date("2021-04-25"),label="Delta variant",y=max(Cases)/2),color="blue",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-11-26")), linetype="dashed", color="green", size=1.5)+geom_text(aes(x=as.Date("2021-11-01"),label="Omicron variant",y=max(Cases)/2),color="green",angle=90)
+
+##2nd graph
+decreasing_cali_confirmations <- confirmed_california[order(confirmed_california[,ncol(confirmed_california)], decreasing = TRUE),]
+top3_cities_cali <- confirmed_california %>% slice_max(confirmed_california[,ncol(confirmed_california)], n=3)
+colnames(top3_cities_cali)[6]<-"City"
+top3_cities <- subset(top3_cities_cali, select = -c(UID,iso2,iso3,code3,FIPS,Province_State,Country_Region,Lat,Long_,Combined_Key))
+
+top3_pivoted<-pivot_longer(top3_cities,cols=2:ncol(top3_cities),names_to="Date",values_to="Cases")
+top3_pivoted$Date=rep(seq(as.Date("2020-01-22"),by="day",length.out=ncol(top3_cities)-1),times=3)
+
+top3cities_plot <- ggplot(data = top3_pivoted, mapping = aes(x=Date, y=Cases))+geom_point()+labs(title="Cities with the top 3 number confirmed COVID-19 cases in California", x="Date", y="Confirmed Cases")+geom_point(aes(col=City))+geom_vline(xintercept = as.numeric(as.Date("2021-01-29")), linetype="dashed", color="red", size=1.5)+geom_text(aes(x=as.Date("2021-01-10"),label="EUA first dose",y=max(Cases)/2),color="red",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-05-11")), linetype="dashed", color="blue", size=1.5)+geom_text(aes(x=as.Date("2021-04-25"),label="Delta variant",y=max(Cases)/2),color="blue",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-11-26")), linetype="dashed", color="green", size=1.5)+geom_text(aes(x=as.Date("2021-11-01"),label="Omicron variant",y=max(Cases)/2),color="green",angle=90)
+plot_grid(cali_plot,top3cities_plot,ncol=1)
+```
+
+```{r}
+deaths_california <- subset(deaths_us_data, deaths_us_data$Province_State =="California")
+
+
+deaths_cali <- subset(deaths_california, select = -c(UID,iso2,iso3,code3,FIPS,Province_State,Country_Region,Lat,Long_,Combined_Key))
+
+colnames(deaths_cali)[1]<-"City"
+#print(deaths_cali)
+
+confirmed_cali <- subset(confirmed_california, select = -c(UID,iso2,iso3,code3,FIPS,Province_State,Country_Region,Lat,Long_,Combined_Key))
+colnames(confirmed_cali)[1]<-"City"
+#print(confirmed_cali)
+
+
+cnamesDeaths <- colnames(deaths_cali)
+lastDeathColName <- cnamesDeaths[ncol(deaths_cali)]
+
+cnamesConfirmations <- colnames(confirmed_cali)
+lastConfimedColName <- cnamesConfirmations[ncol(confirmed_cali)]
+
+last_death_table <- data.frame(deaths_cali$City)
+last_death_table$Population=deaths_cali$Population
+last_death_table$Deaths=deaths_cali[,lastDeathColName]
+colnames(last_death_table)[1]<-"City"
+
+last_confirmed_table<-data.frame(confirmed_cali$City)
+last_confirmed_table$Confirmations<-confirmed_california[,lastConfimedColName]
+colnames(last_confirmed_table)[1]<-"City"
+
+##last_table$City <- deaths_cali$City
+##last_table$Population <- deaths_cali$Population
+##last_table$Confirmations <- confirmed_california$lastcolname
+
+joined_Data<-merge(last_confirmed_table,last_death_table,by="City")
+#print(last_death_table)
+#print(last_confirmed_table)
+#print(joined_Data)
+confVsPop_Plot<-ggplot(data = joined_Data, mapping = aes(x=Population, y=Confirmations))+geom_point()+labs(title="Confirmations Vs. Population", x="log_10(Population)", y="log_10(Confirmed Cases)")+scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10")
+plot(confVsPop_Plot)
+deathVaConfirmed_Plot<-ggplot(data = joined_Data, mapping = aes(x=Confirmations, y=Deaths))+geom_point()+labs(title="Deaths Vs. Confirmations", x="log_10(Confirmations)", y="log_10(Deaths)")+scale_y_continuous(trans="log10")+scale_x_continuous(trans="log10")
+plot_grid(confVsPop_Plot,deathVaConfirmed_Plot)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
