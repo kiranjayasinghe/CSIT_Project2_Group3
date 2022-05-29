@@ -4,7 +4,10 @@ author: "Simran Jayasinghe"
 date: "5/27/2022"
 output: html_document
 ---
-##Objective 3
+[GitHub Repository](https://github.com/kiranjayasinghe/CSIT_Project2_Group3)
+---
+
+##Loading Data
 ```{r}
 recoveredglobaldata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
 
@@ -33,8 +36,66 @@ library(cowplot)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(leaflet)
 ```
-##Objective 4
+
+## Objective 1
+
+```{r}
+confirmed_covid_by_country = aggregate(confirmed_global_data[,3:ncol(confirmed_global_data)],by = list(confirmed_global_data$Country.Region),FUN = sum, na.rm = TRUE)
+temp_data = aggregate(confirmed_global_data[,3:4],by = list(confirmed_global_data$Country.Region),FUN = mean, na.rm = TRUE)
+confirmed_covid_by_country$Lat = temp_data$Lat
+confirmed_covid_by_country$Long = temp_data$Long
+colnames_globalconf = colnames(confirmed_covid_by_country)
+last_col_name_conf = colnames_globalconf[ncol(confirmed_covid_by_country)]
+##DEATHS
+deaths_covid_by_country = aggregate(deaths_global_data[,3:ncol(deaths_global_data)],by = list(deaths_global_data$Country.Region),FUN = sum, na.rm = TRUE)
+temp_data = aggregate(deaths_global_data[,3:4],by = list(deaths_global_data$Country.Region),FUN = mean, na.rm = TRUE)
+deaths_covid_by_country$Lat = temp_data$Lat
+deaths_covid_by_country$Long = temp_data$Long
+colnames_globaldeath = colnames(deaths_covid_by_country)
+last_col_name_death = colnames_globaldeath[ncol(deaths_covid_by_country)]
+##print(confirmed_covid_by_country)
+##map
+```
+```{r}
+map = leaflet()
+map = addTiles(map)
+map=addLayersControl(map,baseGroups=c("Confirmations","Deaths"))
+  colPalConfirms=colorQuantile("YlOrRd",confirmed_covid_by_country$last_col_name_conf,n=9)
+  colPalDeaths=colorQuantile("YlOrRd",deaths_covid_by_country$last_col_name_death,n=9)
+##map=addMarkers(map,group="Confirmations",confirmed_covid_by_country$Long,confirmed_covid_by_country$Lat,popup=paste("Confirmations=",confirmed_covid_by_country$last_col_name_conf))
+  map=addCircles(map,group="Confirmations",confirmed_covid_by_country$Long,confirmed_covid_by_country$Lat,radius=120000,color=colPalConfirms(confirmed_covid_by_country[,ncol(confirmed_covid_by_country)]),fillOpacity=1,popup=paste("Confirmations=",confirmed_covid_by_country[,ncol(confirmed_covid_by_country)]),label=confirmed_covid_by_country$Group.1)
+  map=addCircles(map,group="Deaths",deaths_covid_by_country$Long,deaths_covid_by_country$Lat,label=deaths_covid_by_country$Group.1,radius=120000,color=colPalDeaths(deaths_covid_by_country[,ncol(deaths_covid_by_country)]),fillOpacity=1)
+  
+map
+```
+## Objective 2
+```{r}
+library(kableExtra)
+confirmed_covid_by_country_ranked = confirmed_covid_by_country[order(confirmed_covid_by_country[,ncol(confirmed_covid_by_country)],decreasing=TRUE),]
+#confirmed_covid_by_country_ranked
+confirmations_final_table=data.frame(seq(1,nrow(confirmed_covid_by_country_ranked)))
+confirmations_final_table$Country =confirmed_covid_by_country_ranked$Group.1
+confirmations_final_table$Count=confirmed_covid_by_country_ranked[,ncol(confirmed_covid_by_country_ranked)]
+##data.frame(confirmed_covid_by_country_ranked$Group.1,confirmed_covid_by_country_ranked[,ncol(confirmed_covid_by_country_ranked)])
+colnames(confirmations_final_table)[1]="Rank"
+colnames(confirmations_final_table)[2]="Country"
+colnames(confirmations_final_table)[2]="Count"
+           
+deaths_covid_by_country_ranked = deaths_covid_by_country[order(deaths_covid_by_country[,ncol(deaths_covid_by_country)],decreasing=TRUE),]
+deaths_final_table = data.frame(deaths_covid_by_country_ranked$Group.1,deaths_covid_by_country_ranked[,ncol(deaths_covid_by_country_ranked)])
+colnames(deaths_final_table)[1]="Country"
+colnames(deaths_final_table)[2]="Count"
+table_all_done = kable(list(confirmations_final_table,deaths_final_table),caption="Table of Top Countries",booktabs=TRUE,valign="T",align="ccccc")
+(table_all_done) %>%
+kable_material(c("striped", "hover")) %>%
+   add_header_above(c("Confirmations" = 1, "Deaths" = 1)) %>%
+  scroll_box(width = "800px", height = "600px")
+```
+
+
+## Objective 3
 ```{r}
 
 confirmed_california <- subset(confirmed_us_data, confirmed_us_data$Province_State =="California")
@@ -59,6 +120,9 @@ top3_pivoted$Date=rep(seq(as.Date("2020-01-22"),by="day",length.out=ncol(top3_ci
 top3cities_plot <- ggplot(data = top3_pivoted, mapping = aes(x=Date, y=Cases))+geom_point()+labs(title="Cities with the top 3 number confirmed COVID-19 cases in California", x="Date", y="Confirmed Cases")+geom_point(aes(col=City))+geom_vline(xintercept = as.numeric(as.Date("2021-01-29")), linetype="dashed", color="red", size=1.5)+geom_text(aes(x=as.Date("2021-01-10"),label="EUA first dose",y=max(Cases)/2),color="red",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-05-11")), linetype="dashed", color="blue", size=1.5)+geom_text(aes(x=as.Date("2021-04-25"),label="Delta variant",y=max(Cases)/2),color="blue",angle=90)+geom_vline(xintercept = as.numeric(as.Date("2021-11-26")), linetype="dashed", color="green", size=1.5)+geom_text(aes(x=as.Date("2021-11-01"),label="Omicron variant",y=max(Cases)/2),color="green",angle=90)
 plot_grid(cali_plot,top3cities_plot,ncol=1)
 ```
+
+
+## Objective 4
 
 ```{r}
 deaths_california <- subset(deaths_us_data, deaths_us_data$Province_State =="California")
