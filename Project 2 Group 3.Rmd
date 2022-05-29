@@ -1,0 +1,127 @@
+---
+title: "Project 2 Group 3"
+author: "Kiran Jayasinghe"
+date: "5/24/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+## Data
+```{r}
+recoveredglobaldata = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+confirmedglobaldata = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+
+deathsglobaldata = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+
+recovered_global_data = read.csv(url(recoveredglobaldata))
+
+confirmed_global_data = read.csv(url(confirmedglobaldata))
+
+deaths_global_data = read.csv(url(deathsglobaldata))
+
+
+confirmedusdata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+
+deathsusdata <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"
+
+confirmed_cases_us_data <- read.csv(url(confirmedusdata))
+
+deaths_us_data <- read.csv(url(deathsusdata))
+
+
+```
+
+## Objective 1
+
+```{r}
+
+confirmed_covid_by_country = aggregate(confirmed_global_data[,3:ncol(confirmed_global_data)],by = list(confirmed_global_data$Country.Region),FUN = sum, na.rm = TRUE)
+
+temp_data = aggregate(confirmed_global_data[,3:4],by = list(confirmed_global_data$Country.Region),FUN = mean, na.rm = TRUE)
+
+confirmed_covid_by_country$Lat = temp_data$Lat
+confirmed_covid_by_country$Long = temp_data$Long
+
+
+
+colnames_globalconf = colnames(confirmed_covid_by_country)
+last_col_name_conf = colnames_globalconf[ncol(confirmed_covid_by_country)]
+
+
+##DEATHS
+
+deaths_covid_by_country = aggregate(deaths_global_data[,3:ncol(deaths_global_data)],by = list(deaths_global_data$Country.Region),FUN = sum, na.rm = TRUE)
+
+temp_data = aggregate(deaths_global_data[,3:4],by = list(deaths_global_data$Country.Region),FUN = mean, na.rm = TRUE)
+
+deaths_covid_by_country$Lat = temp_data$Lat
+deaths_covid_by_country$Long = temp_data$Long
+
+colnames_globaldeath = colnames(deaths_covid_by_country)
+last_col_name_death = colnames_globaldeath[ncol(deaths_covid_by_country)]
+
+##print(confirmed_covid_by_country)
+##map
+
+```
+
+```{r}
+
+library(leaflet)
+
+map = leaflet()
+
+map = addTiles(map)
+
+map=addLayersControl(map,baseGroups=c("Confirmations","Deaths"))
+
+  colPalConfirms=colorQuantile("YlOrRd",confirmed_covid_by_country$last_col_name_conf,n=9)
+  colPalDeaths=colorQuantile("YlOrRd",deaths_covid_by_country$last_col_name_death,n=9)
+
+##map=addMarkers(map,group="Confirmations",confirmed_covid_by_country$Long,confirmed_covid_by_country$Lat,popup=paste("Confirmations=",confirmed_covid_by_country$last_col_name_conf))
+
+  map=addCircles(map,group="Confirmations",confirmed_covid_by_country$Long,confirmed_covid_by_country$Lat,radius=120000,color=colPalConfirms(confirmed_covid_by_country[,ncol(confirmed_covid_by_country)]),fillOpacity=1,popup=paste("Confirmations=",confirmed_covid_by_country[,ncol(confirmed_covid_by_country)]),label=confirmed_covid_by_country$Group.1)
+
+  map=addCircles(map,group="Deaths",deaths_covid_by_country$Long,deaths_covid_by_country$Lat,label=deaths_covid_by_country$Group.1,radius=120000,color=colPalDeaths(deaths_covid_by_country[,ncol(deaths_covid_by_country)]),fillOpacity=1)
+  
+map
+
+
+```
+
+
+## Objective 2
+```{r}
+library(kableExtra)
+confirmed_covid_by_country_ranked = confirmed_covid_by_country[order(confirmed_covid_by_country[,ncol(confirmed_covid_by_country)],decreasing=TRUE),]
+
+#confirmed_covid_by_country_ranked
+
+confirmations_final_table=data.frame(seq(1,nrow(confirmed_covid_by_country_ranked)))
+confirmations_final_table$Country =confirmed_covid_by_country_ranked$Group.1
+confirmations_final_table$Count=confirmed_covid_by_country_ranked[,ncol(confirmed_covid_by_country_ranked)]
+
+##data.frame(confirmed_covid_by_country_ranked$Group.1,confirmed_covid_by_country_ranked[,ncol(confirmed_covid_by_country_ranked)])
+colnames(confirmations_final_table)[1]="Rank"
+colnames(confirmations_final_table)[2]="Country"
+colnames(confirmations_final_table)[2]="Count"
+
+           
+
+deaths_covid_by_country_ranked = deaths_covid_by_country[order(deaths_covid_by_country[,ncol(deaths_covid_by_country)],decreasing=TRUE),]
+
+deaths_final_table = data.frame(deaths_covid_by_country_ranked$Group.1,deaths_covid_by_country_ranked[,ncol(deaths_covid_by_country_ranked)])
+colnames(deaths_final_table)[1]="Country"
+colnames(deaths_final_table)[2]="Count"
+
+
+
+
+table_all_done = kable(list(confirmations_final_table,deaths_final_table),caption="Table of Top Countries",booktabs=TRUE,valign="T",align="ccccc")
+
+(table_all_done) %>%
+kable_material(c("striped", "hover")) %>%
+   add_header_above(c("Confirmations" = 1, "Deaths" = 1)) %>%
+  scroll_box(width = "800px", height = "600px")
+```
